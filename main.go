@@ -4,34 +4,75 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+
+	"gopkg.in/yaml.v2"
 )
+
+type TerraformModule struct {
+	Source  string `yaml:"source"`
+	Version string `yaml:"version"`
+}
+
+type Config map[string]TerraformModule
+
+func (c *Config) LoadFromFile(filePath string) error {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(data, c)
+}
+
+func (tm *TerraformModule) Download() error {
+	// you can use package like "go get" or "github.com/mitchellh/go-homedir" to expand ~ in the path
+	modulePath := filepath.Join("path/to/download/modules/", tm.Version)
+	_, err := git.PlainClone(modulePath, false, &git.CloneOptions{
+		URL:      tm.Source,
+		Progress: os.Stdout,
+	})
+	return err
+}
 
 func main() {
 	// Get the repository URL and authentication method from the command line arguments
-	url := os.Args[1]
-	authMethod := os.Args[2]
+	url := "git@github.com:RaftechNL/terrafile.git"
+	authMethod := "ssh"
 
 	var auth transport.AuthMethod
 
 	// Set the appropriate authentication method
 	if authMethod == "ssh" {
-		privateKey, err := ioutil.ReadFile(os.Getenv("HOME") + "/.ssh/id_rsa")
+		pemBytes, err := ioutil.ReadFile(os.Getenv("HOME") + "/.ssh/id_rsa")
+
+		// 	key := strings.Replace(os.Getenv("DEPLOY_KEY"), "\\n", "\n", -1)
+
+		// 	// Username must be "git" for SSH auth to work, not your real username.
+		//   // See https://github.com/src-d/go-git/issues/637
+		// 	publicKey, err := ssh.NewPublicKeys("git", []byte(key), "")
+		// 	if err != nil {
+		// 		log.Fatalf("creating ssh auth method")
+		// 	}
+
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		signer, err := ssh.NewSignerFromKey(privateKey)
+
+		auth, err = ssh.NewPublicKeys("git", pemBytes, "")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		auth = &ssh.PublicKeys{User: "git", Signer: signer}
+
 	} else if authMethod == "token" {
 		token := os.Getenv("GITHUB_TOKEN")
 		if token == "" {
@@ -47,6 +88,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println(os.TempDir() + "/repo")
+
+	fmt.Println("Removing old folder....")
+	os.RemoveAll(os.TempDir() + "/repo")
+
 	// Clone the repository
 	_, err := git.PlainClone(os.TempDir()+"/repo", false, &git.CloneOptions{
 		URL:           url,
@@ -56,7 +102,69 @@ func main() {
 	})
 
 	if err != nil {
+		fmt.Println("I have encountered an error")
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	// jc := JobCoordinator{jobQueue: make(chan Job, 100)}
+	// jc.Run(10)
+
+	// for i := 0; i < 100; i++ {
+	// 	jc.AddJob(i, func() {
+	// 		fmt.Println("Running job", i)
+	// 	}, time.Second*5)
+	// }
+
+	// jc.Wait()
+	// fmt.Println("All jobs complete!")
+}
+
+type Job struct {
+	id       int
+	function func()
+	timeout  time.Duration
+}
+
+func (jc *JobCoordinator) worker() {
+	for job := range jc.jobQueue {
+		timeout := time.After(job.timeout) // set timeout using the passed in value
+		done := make(chan bool)
+
+		go func() {
+			job.function()
+			done <- true
+		}()
+
+		select {
+		case <-done:
+			jc.waitGroup.Done()
+		case <-timeout:
+			fmt.Println("Job", job.id, "timed out.")
+			jc.waitGroup.Done()
+		}
+	}
+}
+
+func (jc *JobCoordinator) Run(numWorkers int) {
+	jc.waitGroup.Add(numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		go jc.worker()
+	}
+}
+
+type JobCoordinator struct {
+	jobQueue  chan Job
+	waitGroup sync.WaitGroup
+}
+
+func (jc *JobCoordinator) AddJob(id int, function func(), timeout time.Duration) {
+	job := Job{id: id, function: function, timeout: timeout}
+	jc.jobQueue <- job
+	jc.waitGroup.Add(1)
+}
+
+func (jc *JobCoordinator) Wait() {
+	jc.waitGroup.Wait()
+	close(jc.jobQueue)
 }

@@ -2,7 +2,10 @@ module github.com/raftechnl/terrafile
 
 go 1.19
 
-require github.com/go-git/go-git/v5 v5.5.2
+require (
+	github.com/go-git/go-git/v5 v5.5.2
+	gopkg.in/yaml.v2 v2.2.4
+)
 
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect

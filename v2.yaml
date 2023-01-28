@@ -1,0 +1,21 @@
+providers:
+    my_provider:
+        providerType: github
+        auth:
+            token: "abc123"
+            ssh_key: "ssh:key:2312312"
+            username: "my_username"
+            password: "my_password"
+    my_provider2:
+        providerType: github
+        auth:
+            token: "abc123"
+            ssh_key: "ssh:key:2312312"
+            username: "my_username"
+            password: "my_password"
+modules:
+    my_module:
+        source: "github.com/example/module"
+        version: "v1.0.0"
+        providerAliasRef: "my_provider2"
+

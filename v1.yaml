@@ -1,0 +1,9 @@
+terraform-aws-s3-bucket:
+    source: "https://github.com/terraform-aws-modules/terraform-aws-s3-bucket"
+    version: "v3.3.0"
+terraform-aws-s3-bucket2:
+    source: "https://github.com/terraform-aws-modules/terraform-aws-s3-bucket"
+    version: "master"    
+terraform-aws-s3-bucket3:
+    source: "https://github.com/terraform-aws-modules/terraform-aws-s3-bucket"
+    version: "v4.4.2"    

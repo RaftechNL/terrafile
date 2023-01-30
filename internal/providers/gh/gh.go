@@ -6,14 +6,31 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+
+	"github.com/RaftechNL/terrafile/internal/providers"
+	"github.com/RaftechNL/terrafile/internal/providers/config"
 )
 
-func DownloadRepository(moduleSource, ref, moduleOutput string) error {
+type ProviderGithub struct {
+	config *config.ProviderConfig
+}
 
-	err := downloadRepositoryByBranch(moduleSource, ref, moduleOutput)
+func NewGithubProvider(config *config.ProviderConfig) *ProviderGithub {
+	return &ProviderGithub{
+		config: config,
+	}
+}
+
+func (pgh *ProviderGithub) DownloadModule(moduleSpec providers.ModuleSpec, outputPath string) error {
+
+	fmt.Println("Downloading module from Github")
+	fmt.Println("Module source: ", moduleSpec.Source)
+	fmt.Println("Module ver: ", moduleSpec.Version)
+
+	err := pgh.downloadRepositoryByTag(moduleSpec.Source, moduleSpec.Version, outputPath)
 	if err != nil {
 
-		err := downloadRepositoryByTag(moduleSource, ref, moduleOutput)
+		err := pgh.downloadRepositoryByBranch(moduleSpec.Source, moduleSpec.Version, outputPath)
 		if err != nil {
 			return err
 		}
@@ -23,7 +40,7 @@ func DownloadRepository(moduleSource, ref, moduleOutput string) error {
 	return nil
 }
 
-func downloadRepositoryByTag(moduleSource, ref, moduleOutput string) error {
+func (pgh *ProviderGithub) downloadRepositoryByTag(moduleSource, ref, moduleOutput string) error {
 	os.RemoveAll(moduleOutput)
 
 	refTag := plumbing.NewTagReferenceName(ref)
@@ -41,7 +58,7 @@ func downloadRepositoryByTag(moduleSource, ref, moduleOutput string) error {
 	return nil
 }
 
-func downloadRepositoryByBranch(moduleSource, ref, moduleOutput string) error {
+func (pgh *ProviderGithub) downloadRepositoryByBranch(moduleSource, ref, moduleOutput string) error {
 	os.RemoveAll(moduleOutput)
 
 	refBranch := plumbing.NewBranchReferenceName(ref)

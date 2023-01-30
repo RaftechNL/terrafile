@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 
-	_ "github.com/RaftechNL/terrafile/internal/providers/gh"
 	"github.com/RaftechNL/terrafile/internal/terrafilev2"
+)
+
+const (
+	defaultModuleOutputPath = "./vendorski"
 )
 
 func main() {
@@ -14,15 +17,14 @@ func main() {
 		fmt.Println(errv2)
 	}
 
-	for _, module := range tfv2.Modules {
+	for alias, module := range tfv2.Modules {
 		fmt.Println(module.Source)
-		// x := tfv2.Providers[module.ProviderAliasRef]
 
-		// fmt.Println(x)
+		providerAliasRef := module.GetProviderAliasRef()
 
-		// module.Provider.DownloadModule(&module.ProviderConfig)
-
-		fmt.Println(module)
+		//TODO: Handle nil pointer situations! Critical panic :)
+		module.SetProvider(tfv2.GetProviderByAliasRef(providerAliasRef))
+		module.Download(fmt.Sprintf("%s/%s", defaultModuleOutputPath, alias))
 	}
 
 }

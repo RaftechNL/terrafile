@@ -2,26 +2,23 @@ package tf
 
 import (
 	"github.com/RaftechNL/terrafile/internal/providers"
-	"github.com/RaftechNL/terrafile/internal/providers/config"
-	_ "github.com/RaftechNL/terrafile/internal/providers/gh"
 )
 
 type Module struct {
-	Source           string `yaml:"source"`
-	Version          string `yaml:"version"`
-	ProviderAliasRef string `yaml:"providerAliasRef"`
-	Provider         providers.ProviderIface
-	ProviderConfig   *config.ProviderConfig
+	providers.ModuleSpec `yaml:",inline"`
+	ProviderAliasRef     string `yaml:"providerAliasRef"`
+
+	Provider *providers.ProviderIface
 }
 
-// func (tm *TerraformModule) Download(modulePath string) error {
+func (m *Module) SetProvider(provider *providers.ProviderIface) {
+	m.Provider = provider
+}
 
-// 	err := gh.DownloadRepository(tm.Source, tm.Version, modulePath)
+func (m *Module) GetProviderAliasRef() string {
+	return m.ProviderAliasRef
+}
 
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	tm.Provider.DownloadModule()
-// 	return nil
-// }
+func (m *Module) Download(outputPath string) error {
+	return (*m.Provider).DownloadModule(m.ModuleSpec, outputPath)
+}
